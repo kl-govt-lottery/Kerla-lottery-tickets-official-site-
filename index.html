@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Data Entry</title>
+    <style>
+        body { font-family: sans-serif; background: #f3f4f6; margin: 15px; }
+        .box { background: white; padding: 18px; border-radius: 8px; max-width: 650px; margin: 0 auto 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h3 { margin-top: 0; color: #1e3a8a; }
+        input, select, button { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background: #2563eb; color: white; font-weight: bold; border: none; cursor: pointer; }
+        button:disabled { background: #9ca3af; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #e5e7eb; }
+        .action-btn { display: flex; gap: 4px; }
+        .del-btn { background: #ef4444; padding: 4px 8px; width: auto; font-size: 12px; }
+        .logout-btn { background: #dc2626; width: auto; float: right; padding: 6px 12px; font-size: 13px; }
+        #msg, #loginMsg { font-weight: bold; margin-top: 8px; }
+        #msg { color: #2563eb; }
+        #loginMsg { color: #ef4444; }
+        #mainContent { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Login Form Screen -->
+    <div class="box" id="loginBox">
+        <h3>Admin Login</h3>
+        <div>
+            <input type="text" id="adminUser" placeholder="Username" required>
+            <input type="password" id="adminPass" placeholder="Password" required>
+            <button type="button" onclick="handleLogin()">Login</button>
+        </div>
+        <div id="loginMsg"></div>
+    </div>
+
+    <!-- Admin Panel Content (Protected) -->
+    <div id="mainContent">
+        <div class="box">
+            <button class="logout-btn" onclick="logout()">Logout</button>
+            <div style="clear: both;"></div>
+            <h3>+ Google Sheet me Data Save Karein</h3>
+            <form id="myform">
+                <input type="text" id="name" placeholder="Naam" required>
+                <input type="text" id="ticket" placeholder="Ticket No" required>
+                <input type="tel" id="mobile" placeholder="Mobile No" required>
+                <input type="text" id="prize" placeholder="Prize Name" required>
+                <input type="number" id="amount" placeholder="Prize Amount (₹)" required>
+                <input type="number" id="fee" placeholder="Fee / Charge (₹)" required>
+                <input type="text" id="upiId" placeholder="UPI ID" required>
+                <select id="status">
+                    <option value="Pending">Pending</option>
+                    <option value="Paid">Paid</option>
+                </select>
+                <button type="submit" id="btn">Save Karein</button>
+            </form>
+            <div id="msg"></div>
+        </div>
+
+        <div class="box" style="overflow-x: auto;">
+            <h3>Saved Records</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticket</th>
+                        <th>Naam</th>
+                        <th>Mobile</th>
+                        <th>Prize</th>
+                        <th>Amount</th>
+                        <th>Fee</th>
+                        <th>UPI</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API = "https://sheetdb.io/api/v1/waozzz4k9eemm";
+        const msg = document.getElementById("msg");
+        const list = document.getElementById("list");
+        const form = document.getElementById("myform");
+        const btn = document.getElementById("btn");
+        const loginBox = document.getElementById("loginBox");
+        const mainContent = document.getElementById("mainContent");
+        const loginMsg = document.getElementById("loginMsg");
+
+        // Login Check Logic
+        function checkAuth() {
+            if (sessionStorage.getItem("adminLoggedIn") === "true") {
+                loginBox.style.display = "none";
+                mainContent.style.display = "block";
+                getData();
+            } else {
+                loginBox.style.display = "block";
+                mainContent.style.display = "none";
+            }
+        }
+
+        function handleLogin() {
+            const user = document.getElementById("adminUser").value.trim();
+            const pass = document.getElementById("adminPass").value.trim();
+            if (user === "sujit" && pass === "sujit@00") {
+                sessionStorage.setItem("adminLoggedIn", "true");
+                loginMsg.innerText = "";
+                document.getElementById("adminUser").value = "";
+                document.getElementById("adminPass").value = "";
+                checkAuth();
+            } else {
+                loginMsg.innerText = "Galat Username ya Password!";
+            }
+        }
+
+        document.getElementById("adminPass").addEventListener("keyup", function(e) {
+            if (e.key === "Enter") handleLogin();
+        });
+
+        function logout() {
+            sessionStorage.removeItem("adminLoggedIn");
+            list.innerHTML = "";
+            msg.innerText = "";
+            checkAuth();
+        }
+
+        // Fetch Records
+        async function getData() {
+            msg.innerText = "Loading data...";
+            try {
+                const res = await fetch(API);
+                const data = await res.json();
+                list.innerHTML = "";
+                if (Array.isArray(data) && data.length > 0) {
+                    data.forEach(item => {
+                        const tkt = item.ticket || '';
+                        const mobile = item.mobile || '';
+                        const amount = item.amount || '';
+                        const fee = item.fee || '';
+                        const upiId = item.upiId || '';
+                        const status = item.status || 'Pending';
+
+                        list.innerHTML += `
+                            <tr>
+                                <td><b>${tkt}</b></td>
+                                <td>${item.name || ''}</td>
+                                <td>${mobile}</td>
+                                <td>${item.prize || ''}</td>
+                                <td>₹${amount}</td>
+                                <td>₹${fee}</td>
+                                <td>${upiId}</td>
+                                <td>${status}</td>
+                                <td>
+                                    <div class="action-btn">
+                                        <button type="button" class="del-btn" onclick="delItem('${tkt}')">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    msg.innerText = "Data load ho gaya!";
+                } else {
+                    msg.innerText = "Koi record nahi mila.";
+                }
+            } catch (e) {
+                msg.innerText = "Error: " + e.message;
+            }
+        }
+
+        // Save Record
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            btn.disabled = true;
+            msg.innerText = "Saving to Google Sheet...";
+
+            const row = {
+                name: document.getElementById("name").value.trim(),
+                ticket: document.getElementById("ticket").value.trim(),
+                mobile: document.getElementById("mobile").value.trim(),
+                prize: document.getElementById("prize").value.trim(),
+                amount: document.getElementById("amount").value.trim(),
+                fee: document.getElementById("fee").value.trim(),
+                upiId: document.getElementById("upiId").value.trim(),
+                status: document.getElementById("status").value
+            };
+
+            try {
+                const res = await fetch(API, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ data: [row] })
+                });
+                const resJson = await res.json();
+                if (resJson.created || Array.isArray(resJson)) {
+                    msg.innerText = "Sheet me successfully save ho gaya!";
+                    form.reset();
+                    getData();
+                } else {
+                    msg.innerText = "Save nahi hua: " + JSON.stringify(resJson);
+                }
+            } catch (err) {
+                msg.innerText = "Error: " + err.message;
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        // Delete Record
+        async function delItem(tkt) {
+            if (!tkt || tkt === "undefined") return;
+            if (!confirm("Kya aap sach me ise delete karna chahte hain?")) return;
+            msg.innerText = "Deleting...";
+            try {
+                await fetch(`${API}/ticket/${encodeURIComponent(tkt)}`, { method: "DELETE" });
+                msg.innerText = "Ticket delete ho gaya!";
+                getData();
+            } catch (err) {
+                msg.innerText = "Delete Error: " + err.message;
+            }
+        }
+
+        // Initial run
+        checkAuth();
+    </script>
+</body>
+</html>
